@@ -41,6 +41,18 @@ app.post('/upload', upload.single('mp4File'), (req, res) => {
     const inputFilePath = path.join(uploadDirectory, req.file.filename);
     const outputFileName = path.basename(inputFilePath, path.extname(inputFilePath)) + '.mp3';
     const outputFilePath = path.join(outputDirectory, outputFileName);
+    const purge = () => { // Clean up the temporary files
+        try {
+            if (fs.existsSync(inputFilePath)) {
+                fs.unlinkSync(inputFilePath);
+            }
+            if (fs.existsSync(outputFilePath)) {
+                fs.unlinkSync(outputFilePath);
+            }
+        } catch (err) {
+            console.error("Error deleting files:", err);
+        }
+    };
     console.log('Converting...', inputFilePath, outputFilePath);
     ffmpeg.setFfmpegPath(ffmpegPath); // Set the FFmpeg path
     ffmpeg()
@@ -50,21 +62,19 @@ app.post('/upload', upload.single('mp4File'), (req, res) => {
         .on('end', () => {
             // Send the converted file as a download response
             res.download(outputFilePath, outputFileName, (err) => {
+                purge();
                 if (err) {
                     console.error('Download error:', err);
                     return res.status(500).send('Error during download.');
                 }
-                // Clean up the temporary files
-                fs.unlinkSync(inputFilePath);
-                fs.unlinkSync(outputFilePath);
             });
         })
         .on('error', (err) => {
+            purge();
             console.error('Conversion error:', err);
             return res.status(500).send('Error during conversion.');
         })
-        .save(outputFilePath);  
-
+        .save(outputFilePath);
 });
 
 app.listen(port, () => {

@@ -51,8 +51,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             const dropZone = document.getElementById('drop-zone');
             const fileInput = document.getElementById('file-input');
-            const errorMessage = document.getElementById('error-message');
-            const conversionStatus = document.getElementById('conversion-status');
+            const errDiv = document.getElementById('error-message');
+            const txtDiv = document.getElementById('conversion-status');
+            const errorMessage = (msg) => {
+                txtDiv.textContent = '';
+                errDiv.textContent = msg ?? '';
+            };
+            const conversionStatus = (msg) => {
+                errDiv.textContent = '';
+                txtDiv.textContent = msg ?? '';
+            };
             // Prevent default behavior and propagation for drag-and-drop events
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropZone.addEventListener(eventName, preventDefaults, false);
@@ -80,8 +88,7 @@
         
             // Function to handle file input change
             fileInput.addEventListener('change', (e) => {
-                const files = e.target.files;
-                handleFiles(files);
+                handleFiles(e?.target?.files ?? []);
             }, false);
         
             // Function to prevent default behavior and propagation
@@ -97,12 +104,10 @@
                 }
                 const file = files[0];
                 if (file.type !== 'video/mp4') {
-                    errorMessage.textContent = 'Wrong file format, please select an MP4 file.';
-                    return;
+                    return errorMessage('Wrong file format, please select an MP4 file.');
                 }
-                errorMessage.textContent = ''; // Clear any previous error messages
                 dropZone.classList.add('busy'); // Mask dropzone until convertion done
-                conversionStatus.textContent = 'Converting ' + file.name + ' to MP3 format...';
+                conversionStatus('Converting ' + file.name + ' to MP3 format...');
                 const formData = new FormData(); // Create a FormData object and append the selected file
                 formData.append('mp4File', file);
                 // Use Fetch API to send the file to the server
@@ -113,12 +118,12 @@
                 .then(response => {
                     dropZone.classList.remove('busy');
                     if (!response.ok) {
-                        errorMessage.textContent = 'Error during conversion. Please try again.';
+                        errorMessage('Error during conversion. Please try again.');
                     }
                     return response.blob();
                 })
                 .then(blob => {
-                    if (blob) {
+                    if (blob && blob.type === 'audio/mpeg') {
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.style.display = 'none';
@@ -127,13 +132,13 @@
                         document.body.appendChild(a);
                         a.click();
                         window.URL.revokeObjectURL(url);
-                        conversionStatus.textContent = 'Downloading ' + a.download + ' file. Please check your downloads directory.';
-                        setTimeout(() => conversionStatus.textContent = '', 4000); // Clear status line after 4 sec
+                        conversionStatus('Downloading ' + a.download + ' file. Please check your downloads directory.');
+                        setTimeout(() => conversionStatus(), 4000); // Clear status line after 4 sec
                     }
                 })
                 .catch(error => {
                     dropZone.classList.remove('busy');
-                    errorMessage.textContent = 'An error occurred: ' + (error.message ?? 'failed to fetch.');
+                    errorMessage('An error occurred: ' + (error.message ?? 'failed to fetch.'));
                     console.log({ error });
                 });
             }

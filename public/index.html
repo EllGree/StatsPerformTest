@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MP4 to MP3 Converter</title>
+    <style>
+        * {
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        @keyframes placeHolderShimmer {
+            0% {
+              background-position: -900px 0
+            }
+            100% {
+              background-position: 900px 0
+            }
+        }
+        #drop-zone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            cursor: pointer;
+            width: 70%;
+            margin: 20px auto;
+            transition: all 0.3s ease;
+        }
+        #drop-zone.highlight {
+            border-color: #008100;
+            background-color: #b2fac2;
+            transform: scale(1.2);
+        }
+
+        #drop-zone.busy {
+            color: transparent;
+            cursor: no-drop;
+            border-color: #ccc;
+            transform: none;
+            animation-duration: 2s;
+            animation-fill-mode: forwards;
+            animation-iteration-count: infinite;
+            animation-name: placeHolderShimmer;
+            animation-timing-function: linear;
+            background-color: #f6f7f8;
+            background: linear-gradient(to right, #eee 8%, #bbb 18%, #eee 28%);
+        }
+        #error-message {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const errorMessage = document.getElementById('error-message');
+            const conversionStatus = document.getElementById('conversion-status');
+            // Prevent default behavior and propagation for drag-and-drop events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+        
+            // Highlight drop zone when dragging over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('highlight'), false);
+            });
+        
+            // Unhighlight drop zone when dragging leaves it
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('highlight'), false);
+            });
+        
+            dropZone.addEventListener('drop', (e) => {
+                handleFiles(e?.dataTransfer?.files ?? []);
+            }, false); // Handle file drop
+        
+            // Open file dialog when drop zone is clicked
+            dropZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+        
+            // Function to handle file input change
+            fileInput.addEventListener('change', (e) => {
+                const files = e.target.files;
+                handleFiles(files);
+            }, false);
+        
+            // Function to prevent default behavior and propagation
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        
+            // Function to handle selected files
+            function handleFiles(files) {
+                if (files.length === 0 || dropZone.classList.contains('busy')) {
+                    return;
+                }
+                const file = files[0];
+                if (file.type !== 'video/mp4') {
+                    errorMessage.textContent = 'Wrong file format, please select an MP4 file.';
+                    return;
+                }
+                errorMessage.textContent = ''; // Clear any previous error messages
+                dropZone.classList.add('busy'); // Mask dropzone until convertion done
+                conversionStatus.textContent = 'Converting ' + file.name + ' to MP3 format...';
+                const formData = new FormData(); // Create a FormData object and append the selected file
+                formData.append('mp4File', file);
+                // Use Fetch API to send the file to the server
+                fetch('/upload', {
+                    method: 'POST', 
+                    body: formData,
+                })
+                .then(response => {
+                    dropZone.classList.remove('busy');
+                    if (!response.ok) {
+                        errorMessage.textContent = 'Error during conversion. Please try again.';
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    if (blob) {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = file.name.replace(/\.mp4$/i, '.mp3');
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        conversionStatus.textContent = 'Downloading ' + a.download + ' file. Please check your downloads directory.';
+                        setTimeout(() => conversionStatus.textContent = '', 4000); // Clear status line after 4 sec
+                    }
+                })
+                .catch(error => {
+                    dropZone.classList.remove('busy');
+                    errorMessage.textContent = 'An error occurred: ' + (error.message ?? 'failed to fetch.');
+                    console.log({ error });
+                });
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>MP4 to MP3 Converter</h1>
+    <div id="drop-zone">
+        <p>Drag and drop an MP4 file here or click to select one.</p>
+        <input type="file" id="file-input" accept=".mp4" style="display: none;">
+    </div>
+    <div id="error-message"></div>
+    <div id="conversion-status"></div>
+</body>
+</html>

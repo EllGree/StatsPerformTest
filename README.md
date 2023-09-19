@@ -44,6 +44,9 @@ Before deploying the application as a Docker container, make sure you have the f
 3. Build the Docker image `docker-compose build`
 4. Run the Docker container `docker-compose up`
 
+Docker Hub URL: https://hub.docker.com/r/ellgree/statsperformtest-my-node-app
+Digital Ocean App URL: https://whale-app-mz9qo.ondigitalocean.app/
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE.md file for details.
